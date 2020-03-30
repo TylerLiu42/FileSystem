@@ -1,10 +1,6 @@
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.sql.Blob;
 import java.sql.Connection;
@@ -16,19 +12,21 @@ import java.sql.Statement;
 public class Utilities {
 	Connection con;
 	String currentDirectory;
-	public Utilities(Connection con, String currentDirectory) {
+	String currentFileID;
+	public Utilities(Connection con, String currentDirectory, String currentFileID) {
 		this.con = con;
 		this.currentDirectory = currentDirectory;
+		this.currentFileID = currentFileID; 
 	}
 	
 	protected void ls(boolean longFlag) {
 		try {
 			Statement stmt = con.createStatement();
-			PreparedStatement pstmt = longFlag ? 
-					con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
+			PreparedStatement pstmt = longFlag 
+					? con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
 							+ " from file where parent = (select fileID from file where name = ?)")
-					: con.prepareStatement("select name from file where parent = (select fileID from file where name = ?)");
-			pstmt.setString(1, currentDirectory);
+					: con.prepareStatement("select name from file where parent = (select fileID from file where fileID = ?)");
+			pstmt.setString(1, currentFileID);
 			ResultSet rs = pstmt.executeQuery();
 			
 			while (rs.next()) {
@@ -62,5 +60,24 @@ public class Utilities {
 		} catch (SQLException | IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	protected PathInfo cd(String path, String currentFileID, boolean isForward) {
+		try {
+			Statement stmt = con.createStatement();
+			PreparedStatement pstmt = isForward 
+					? con.prepareStatement("select name, fileID from file where parent = ? and name = ? and fileType = 'directory'")
+					: con.prepareStatement("select name, fileID from file where fileID = (select parent from file where fileID = ?)");
+			pstmt.setString(1, currentFileID);
+			if (isForward) pstmt.setString(2, path);
+			ResultSet rs = pstmt.executeQuery();
+			if (rs.next()) {
+				return new PathInfo(rs.getString(1), rs.getString(2));
+			}
+			if (isForward) System.out.println("Directory not found");
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return new PathInfo(null, currentFileID); 
 	}
 }

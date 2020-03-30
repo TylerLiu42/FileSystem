@@ -3,7 +3,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Scanner;
@@ -12,6 +11,7 @@ public class Client {
 
 	public static void main(String[] args) throws IOException {  
 		String currentDirectory = "root";
+		String currentFileID = "1";
 		BufferedReader br = new BufferedReader(new FileReader("pw.txt"));
 		String password = br.readLine();
 		Connection con = null;
@@ -29,21 +29,34 @@ public class Client {
 		Scanner scanner = new Scanner(System.in);
 		
 		while (true) {
-			System.out.print("Enter command: ");
+			System.out.print(currentDirectory + " > Enter command: ");
 			String command = scanner.nextLine();
 			if (command.equals("ls")) {
-				Utilities util = new Utilities(con, currentDirectory);
+				Utilities util = new Utilities(con, currentDirectory, currentFileID);
 				util.ls(false);
 			}
 			else if (command.equals("ls -l")) {
-				Utilities util = new Utilities(con, currentDirectory);
+				Utilities util = new Utilities(con, currentDirectory, currentFileID);
 				util.ls(true);
 			}
 			else if (command.substring(0, 2).equals("sh")) {
 				String[] commandStr = command.split(" ");
 				String executableName = commandStr[1];
-				Utilities util = new Utilities(con, currentDirectory);
+				Utilities util = new Utilities(con, currentDirectory, currentFileID);
 				util.sh(executableName);
+			}
+			else if (command.substring(0, 2).equals("cd")) {
+				String[] commandStr = command.split(" ");
+				String fullPath = commandStr[1];
+				String[] pathComponents = fullPath.split("/");
+				boolean isForward = true;
+				if (command.substring(0, 5).equals("cd ..")) isForward = false;
+				for (String path : pathComponents) {
+					Utilities util = new Utilities(con, currentDirectory, currentFileID);
+					PathInfo newPathInfo = util.cd(path, currentFileID, isForward);
+					currentDirectory = newPathInfo.getCurrentDirectory() == null ? currentDirectory : newPathInfo.getCurrentDirectory();
+					currentFileID = newPathInfo.getCurrentFileID();
+				}
 			}
 		}
 	}
