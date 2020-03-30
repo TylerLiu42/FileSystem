@@ -30,10 +30,20 @@ public class Client {
 		
 		while (true) {
 			System.out.print("Enter command: ");
-			String command = scanner.next();
+			String command = scanner.nextLine();
 			if (command.equals("ls")) {
 				Utilities util = new Utilities(con, currentDirectory);
-				util.ls();
+				util.ls(false);
+			}
+			else if (command.equals("ls -l")) {
+				Utilities util = new Utilities(con, currentDirectory);
+				util.ls(true);
+			}
+			else if (command.substring(0, 2).equals("sh")) {
+				String[] commandStr = command.split(" ");
+				String executableName = commandStr[1];
+				Utilities util = new Utilities(con, currentDirectory);
+				util.sh(executableName);
 			}
 		}
 	}
