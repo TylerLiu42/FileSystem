@@ -30,8 +30,11 @@ public class Client {
 		
 		while (true) {
 			System.out.print(currentDirectory + " > Enter command: ");
-			String command = scanner.nextLine();
-			if (command.equals("ls")) {
+			String command = scanner.nextLine().trim();
+            if (command.equals("")) {
+                continue;
+            }
+			else if (command.equals("ls")) {
 				Utilities util = new Utilities(con, currentDirectory, currentFileID);
 				util.ls(false);
 			}
@@ -58,6 +61,9 @@ public class Client {
 					currentFileID = newPathInfo.getCurrentFileID();
 				}
 			}
+            else {
+                System.out.println("Unrecognized command");
+            }
 		}
 	}
 }

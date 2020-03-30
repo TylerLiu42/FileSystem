@@ -54,9 +54,11 @@ public class Utilities {
 				out.write(buff);
 				out.close();
 				in.close();
+                Process p = new ProcessBuilder(executableName).start();
+                p.waitFor();
+			} else {
+			    System.out.println("Not a regular file or hardlink");
 			}
-			Process p = new ProcessBuilder(executableName).start();
-			p.waitFor();
 		} catch (SQLException | IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
