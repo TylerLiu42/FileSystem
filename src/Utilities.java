@@ -8,24 +8,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Utilities {
 	Connection con;
-	String currentDirectory;
 	String currentFileID;
-	public Utilities(Connection con, String currentDirectory, String currentFileID) {
+	public Utilities(Connection con, String currentFileID) {
 		this.con = con;
-		this.currentDirectory = currentDirectory;
 		this.currentFileID = currentFileID; 
 	}
-	
+
 	protected void ls(boolean longFlag) {
 		try {
 			Statement stmt = con.createStatement();
 			PreparedStatement pstmt = longFlag 
 					? con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
-							+ " from file where parent = (select fileID from file where name = ?)")
-					: con.prepareStatement("select name from file where parent = (select fileID from file where fileID = ?)");
+							+ " from File where parent = (select fileID from File where name = ?)")
+					: con.prepareStatement("select name from File where parent = (select fileID from File where fileID = ?)");
 			pstmt.setString(1, currentFileID);
 			ResultSet rs = pstmt.executeQuery();
 			
@@ -39,11 +39,11 @@ public class Utilities {
 			e.printStackTrace();
 		}
 	}
-	
+
 	protected void sh(String executableName) {
 		try {
 			Statement stmt = con.createStatement();
-			PreparedStatement pstmt = con.prepareStatement("select data from content join file using (contentID) where name = ?");
+			PreparedStatement pstmt = con.prepareStatement("select data from Content join File using (contentID) where name = ?");
 			pstmt.setString(1, executableName);
 			ResultSet rs = pstmt.executeQuery();
 			if (rs.next()) {
@@ -63,23 +63,59 @@ public class Utilities {
 			e.printStackTrace();
 		}
 	}
-	
-	protected PathInfo cd(String path, String currentFileID, boolean isForward) {
+
+	protected PathInfo cd(String path, PathInfo origPath) {
 		try {
-			Statement stmt = con.createStatement();
-			PreparedStatement pstmt = isForward 
-					? con.prepareStatement("select name, fileID from file where parent = ? and name = ? and fileType = 'directory'")
-					: con.prepareStatement("select name, fileID from file where fileID = (select parent from file where fileID = ?)");
-			pstmt.setString(1, currentFileID);
-			if (isForward) pstmt.setString(2, path);
-			ResultSet rs = pstmt.executeQuery();
-			if (rs.next()) {
-				return new PathInfo(rs.getString(1), rs.getString(2));
-			}
-			if (isForward) System.out.println("Directory not found");
+            PathInfo newPath = resolvePath(path, origPath);
+            if (newPath.getFileType() != PathInfo.FileType.Directory) {
+                System.out.println("Not a directory");
+                return origPath;
+            }
+            return newPath;
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		return new PathInfo(null, currentFileID); 
+        return null;
 	}
+
+    private PathInfo resolvePath(String fullPath, PathInfo origPath) throws SQLException {
+		String[] pathComponents = fullPath.split("/");
+        int start = 0;
+        PathInfo newPath = new PathInfo(origPath);
+        if (pathComponents.length == 0 || pathComponents[0].equals("")) {
+            // abs path
+            currentFileID = PathInfo.ROOTID;
+            start = 1;
+            newPath.clear();
+        }
+
+        String[] path = Arrays.copyOfRange(pathComponents, Math.min(start, pathComponents.length), pathComponents.length);
+        for (String name: path) {
+            if (name.equals(".")) {
+                continue;
+            } else {
+                Statement stmt = con.createStatement();
+                PreparedStatement pstmt;
+                if (name.equals("..")) {
+                    pstmt = con.prepareStatement("select fileID, fileType, name from File where fileID = (select parent from File where fileID = ?)");
+                    newPath.pop();
+                } else {
+                    pstmt = con.prepareStatement("select fileID, fileType, name from File where parent = ? and name = ?");
+                    pstmt.setString(2, name);
+                    newPath.push(name);
+                }
+                pstmt.setString(1, currentFileID);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    currentFileID = rs.getString(1);
+                    newPath.setFileID(currentFileID);
+                    newPath.setFileType(PathInfo.fileType(rs.getString(2)));
+                } else {
+                    System.out.println("Path component " + name + " not found");
+                    return origPath;
+                }
+            }
+        }
+        return newPath;
+    }
 }

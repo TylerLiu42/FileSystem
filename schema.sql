@@ -9,7 +9,7 @@ create table Content (
 create table File (
     fileID VARCHAR(36) not null,
     name VARCHAR(256) not null,
-    parent VARCHAR(36),
+    parent VARCHAR(36) not null,  -- root directory points to itself
     fileType ENUM('directory', 'hardLink', 'symLink') not null,
     readPermission boolean not null,
     writePermission boolean not null,
@@ -27,7 +27,7 @@ create table File (
     -- ensures (parent, name) uniqueness, even if parent is null
     File_path VARCHAR(300) GENERATED ALWAYS as (concat_ws( '?', name, ifnull(parent, '') )) virtual not null unique,
 
-    CHECK(parent != fileID)
+    CHECK((fileID like '') or (parent != fileID))
 );
 
 -- need to ensure in app that:
