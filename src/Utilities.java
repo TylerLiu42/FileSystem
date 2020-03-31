@@ -22,15 +22,14 @@ public class Utilities {
 	protected void ls(boolean longFlag) {
 		try {
 			Statement stmt = con.createStatement();
-			PreparedStatement pstmt = longFlag 
-					? con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
-							+ " from File where parent = (select fileID from File where name = ?)")
-					: con.prepareStatement("select name from File where parent = (select fileID from File where fileID = ?)");
+			PreparedStatement pstmt = con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
+							+ " from File where parent = (select fileID from File where fileID = ?)");
 			pstmt.setString(1, currentFileID);
 			ResultSet rs = pstmt.executeQuery();
 			
 			while (rs.next()) {
-				for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+                int count = longFlag ? rs.getMetaData().getColumnCount() : 1;
+				for (int i = 1; i <= count; i++) {
 		           System.out.print(rs.getString(i) + " ");
 		       }
 			   System.out.println();
