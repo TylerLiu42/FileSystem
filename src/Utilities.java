@@ -7,7 +7,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -31,7 +30,6 @@ public class Utilities {
                 return;
             }
 
-			Statement stmt = con.createStatement();
             String dirStmt = "select name,fileType,readPermission,writePermission,execPermission,created"
                                             + " from File where parent = (select fileID from File where fileID = ?)";
             String fileStmt = "select name,fileType,readPermission,writePermission,execPermission,created from File where fileID = ?";
@@ -53,7 +51,6 @@ public class Utilities {
 
 	protected void sh(String executableName) {
 		try {
-			Statement stmt = con.createStatement();
 			PreparedStatement pstmt = con.prepareStatement("select data from Content join File using (contentID) where name = ?");
 			pstmt.setString(1, executableName);
 			ResultSet rs = pstmt.executeQuery();
@@ -115,7 +112,6 @@ public class Utilities {
                         if (fileType == PathInfo.FileType.SymLink) {
                             content = symLink;
                         } else {
-                            Statement stmt = con.createStatement();
                             PreparedStatement pstmt = conn.prepareStatement("select data from Content where contentID = ?");
                             pstmt.setString(1, contentID);
                             ResultSet rs = pstmt.executeQuery();
@@ -139,6 +135,16 @@ public class Utilities {
             if (target.getFileType() == PathInfo.FileType.Directory) {
                 dirWalk(target, grepOp);
             } else {
+                PreparedStatement pstmt = con.prepareStatement("select name, symLink, contentID from File where fileID = ?");
+                pstmt.setString(1, target.getFileID());
+                ResultSet rs = pstmt.executeQuery();
+                rs.next();
+                String name = rs.getString(1);
+                String symLink = rs.getString(2);
+                String contentID = rs.getString(3);
+                PathInfo targetCopy = new PathInfo(target);
+                targetCopy.pop();
+                grepOp.call(targetCopy, name, target.getFileID(), target.getFileType(), null, null, null, null, symLink, contentID);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -147,7 +153,6 @@ public class Utilities {
 
     // Won't walk thru symlinks
     private void dirWalk(PathInfo dir, FileOperation op) throws SQLException {
-        Statement stmt = con.createStatement();
         PreparedStatement pstmt = con.prepareStatement("select fileID, name, fileType, readPermission, writePermission, execPermission, created, symLink, contentID from File where parent = ?");
         pstmt.setString(1, dir.getFileID());
         ResultSet rs = pstmt.executeQuery();
@@ -172,7 +177,6 @@ public class Utilities {
                 String contentID = rs.getString(9);
                 op.call(dir, name, fileID, fileType, readPermission, writePermission, execPermission, created, symLink, contentID);
             }
-    
         }
     }
 
@@ -206,7 +210,6 @@ public class Utilities {
             if (name.equals(".")) {
                 continue;
             } else {
-                Statement stmt = con.createStatement();
                 PreparedStatement pstmt;
                 if (name.equals("..")) {
                     pstmt = con.prepareStatement("select fileID, fileType, symLink from File where fileID = (select parent from File where fileID = ?)");

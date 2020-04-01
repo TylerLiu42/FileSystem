@@ -27,10 +27,10 @@ public class Client {
 		}
 		
 		Scanner scanner = new Scanner(System.in);
-        Utilities util = new Utilities(con, currentPath);
 		
 		while (true) {
 			System.out.print(currentPath.pathStr() + " > Enter command: ");
+            Utilities util = new Utilities(con, currentPath);
 			String[] command = scanner.nextLine().trim().split(" ");
             if (command.length == 0 || command[0].equals("")) {
                 continue;
