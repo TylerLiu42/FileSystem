@@ -49,20 +49,27 @@ public class Utilities {
 		}
 	}
 
-	protected void sh(String executableName) {
+	protected void sh(String path) {
 		try {
-			PreparedStatement pstmt = con.prepareStatement("select data from Content join File using (contentID) where name = ?");
+			String[] pathComponents = path.split("/");
+			String executableName = pathComponents[pathComponents.length-1];
+			pathComponents[pathComponents.length-1] = "";
+			String pathWithoutFile = String.join("/", pathComponents);
+			PathInfo resolvedPath = cd(pathWithoutFile);
+			PreparedStatement pstmt = con.prepareStatement("select name, data from Content join File using (contentID) where name = ? and parent = ?");
 			pstmt.setString(1, executableName);
+			pstmt.setString(2, resolvedPath.getFileID());
 			ResultSet rs = pstmt.executeQuery();
 			if (rs.next()) {
-				Blob blob = rs.getBlob(1);
+				Blob blob = rs.getBlob(2);
+				String resolvedFileName = rs.getString(1);
 				InputStream in = blob.getBinaryStream();
-				OutputStream out = new FileOutputStream(executableName);
+				OutputStream out = new FileOutputStream(System.getProperty("java.io.tmpdir") + '\\' + resolvedFileName);
 				byte[] buff = blob.getBytes(1,(int)blob.length());
 				out.write(buff);
 				out.close();
 				in.close();
-                Process p = new ProcessBuilder(executableName).start();
+                Process p = new ProcessBuilder(resolvedFileName).start();
                 p.waitFor();
 			} else {
 			    System.out.println("Not a regular file or hardlink");
