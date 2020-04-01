@@ -66,6 +66,7 @@ public class Utilities {
 	protected PathInfo cd(String path, PathInfo origPath) {
 		try {
             PathInfo newPath = resolvePath(path, origPath);
+            if (newPath == null) { return origPath; }
             if (newPath.getFileType() != PathInfo.FileType.Directory) {
                 System.out.println("Not a directory");
                 return origPath;
@@ -96,22 +97,31 @@ public class Utilities {
                 Statement stmt = con.createStatement();
                 PreparedStatement pstmt;
                 if (name.equals("..")) {
-                    pstmt = con.prepareStatement("select fileID, fileType, name from File where fileID = (select parent from File where fileID = ?)");
+                    pstmt = con.prepareStatement("select fileID, fileType, symLink from File where fileID = (select parent from File where fileID = ?)");
                     newPath.pop();
                 } else {
-                    pstmt = con.prepareStatement("select fileID, fileType, name from File where parent = ? and name = ?");
+                    pstmt = con.prepareStatement("select fileID, fileType, symLink from File where parent = ? and name = ?");
                     pstmt.setString(2, name);
                     newPath.push(name);
                 }
                 pstmt.setString(1, currentFileID);
                 ResultSet rs = pstmt.executeQuery();
                 if (rs.next()) {
-                    currentFileID = rs.getString(1);
-                    newPath.setFileID(currentFileID);
-                    newPath.setFileType(PathInfo.fileType(rs.getString(2)));
+                    PathInfo.FileType type = PathInfo.fileType(rs.getString(2));
+
+                    if (type.equals(PathInfo.FileType.SymLink)) {
+                        String symPath = rs.getString(3);
+                        newPath.pop(); // Remove symlink name from the path
+                        newPath = resolvePath(symPath, newPath);
+                        if (newPath == null) { return null; }
+                    } else {
+                        currentFileID = rs.getString(1);
+                        newPath.setFileID(currentFileID);
+                        newPath.setFileType(type);
+                    }
                 } else {
                     System.out.println("Path component " + name + " not found");
-                    return origPath;
+                    return null;
                 }
             }
         }

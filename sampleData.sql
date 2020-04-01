@@ -14,4 +14,6 @@ insert into File (fileID, name, parent, fileType, readPermission, writePermissio
 insert into Content VALUES (2, 'abcdef', 500);
 insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('6', 'lol.jpg', '5', 'hardLink', 1, 1, 1, 2, NULL);
 
-
+insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('7', 'rel1', '5', 'symLink', 1, 1, 1, NULL, "./..");
+insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('8', 'rel2', '5', 'symLink', 1, 1, 1, NULL, "root");
+insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('9', 'abs', '5', 'symLink', 1, 1, 1, NULL, "/root/IntelliJ/src");

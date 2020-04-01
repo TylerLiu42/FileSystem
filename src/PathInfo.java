@@ -58,7 +58,7 @@ public class PathInfo {
     }
 
     public void clear() {
-        tipFileID = null;
+        tipFileID = ROOTID;
         tipFileType = FileType.Directory;
         path.clear();
     }
