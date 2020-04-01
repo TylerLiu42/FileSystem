@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 public class Utilities {
     interface FileOperation {
-        public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created); 
+        public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created, String symLink, String contentID); 
     }
     
 	Connection con;
@@ -86,7 +86,7 @@ public class Utilities {
 
             FileOperation findOp = new FileOperation() {
                 String partial = partialName;
-                public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created) {
+                public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created, String symLink, String contentID) {
                     if (name.contains(partial)) {
                         String[] args = {fileType.toString(), readPermission, writePermission, execPermission, created};
                         System.out.println(dir.pathStr()+"/"+name+" "+String.join(" ", args));
@@ -100,10 +100,55 @@ public class Utilities {
         }
     }
 
+    protected void grep(String path, String searchStr) {
+        try {
+            PathInfo target = resolvePath(path);
+            if (target == null) { return; }
+
+            FileOperation grepOp = new FileOperation() {
+                String search = searchStr;
+                Connection conn = con;
+
+                public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created, String symLink, String contentID) {
+                    try {
+                        String content;
+                        if (fileType == PathInfo.FileType.SymLink) {
+                            content = symLink;
+                        } else {
+                            Statement stmt = con.createStatement();
+                            PreparedStatement pstmt = conn.prepareStatement("select data from Content where contentID = ?");
+                            pstmt.setString(1, contentID);
+                            ResultSet rs = pstmt.executeQuery();
+                            rs.next();
+                            content = rs.getString(1);
+                        }
+
+                        String[] lines = content.split("\n");
+                        for (int i = 0; i < lines.length; i++) {
+                            String line = lines[i];
+                            if (line.contains(search)) {
+                                System.out.println(dir.pathStr()+"/"+name+":"+i+": "+line);
+                            }
+                        }
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                } 
+            };
+
+            if (target.getFileType() == PathInfo.FileType.Directory) {
+                dirWalk(target, grepOp);
+            } else {
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // Won't walk thru symlinks
     private void dirWalk(PathInfo dir, FileOperation op) throws SQLException {
         Statement stmt = con.createStatement();
-        PreparedStatement pstmt = con.prepareStatement("select fileID, name, fileType, readPermission, writePermission, execPermission, created from File where parent = ?");
+        PreparedStatement pstmt = con.prepareStatement("select fileID, name, fileType, readPermission, writePermission, execPermission, created, symLink, contentID from File where parent = ?");
         pstmt.setString(1, dir.getFileID());
         ResultSet rs = pstmt.executeQuery();
         while (rs.next()) {
@@ -123,7 +168,9 @@ public class Utilities {
                 String writePermission = rs.getString(5);
                 String execPermission = rs.getString(6);
                 String created = rs.getString(7);
-                op.call(dir, name, fileID, fileType, readPermission, writePermission, execPermission, created);
+                String symLink = rs.getString(8);
+                String contentID = rs.getString(9);
+                op.call(dir, name, fileID, fileType, readPermission, writePermission, execPermission, created, symLink, contentID);
             }
     
         }

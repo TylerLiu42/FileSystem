@@ -64,13 +64,25 @@ public class Client {
 			}
             else if (command[0].equals("find")) {
                 if (command.length != 3) { 
-                    System.out.println("find takes 2 arguments: directory and partial name");
+                    System.out.println("Usage: find dir pattern");
                     continue;
                 }
 
                 String dir = command[1];
                 String partialName = command[2];
                 util.find(dir, partialName);
+            }
+            else if (command[0].equals("grep")) {
+                if (command.length == 2) {
+                    String search = command[1];
+                    util.grep(".", search);
+                } else if (command.length == 3) {
+                    String dir = command[1];
+                    String search = command[2];
+                    util.grep(dir, search);
+                } else {
+                    System.out.println("Usage: grep [dir] searchStr");
+                }
             }
             else {
                 System.out.println("Unrecognized command");
