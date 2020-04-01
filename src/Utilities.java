@@ -51,14 +51,18 @@ public class Utilities {
 
 	protected void sh(String path) {
 		try {
+			boolean isFullPath = true;
 			String[] pathComponents = path.split("/");
+			if (pathComponents.length == 1) isFullPath = false;
 			String executableName = pathComponents[pathComponents.length-1];
 			pathComponents[pathComponents.length-1] = "";
 			String pathWithoutFile = String.join("/", pathComponents);
 			PathInfo resolvedPath = cd(pathWithoutFile);
-			PreparedStatement pstmt = con.prepareStatement("select name, data from Content join File using (contentID) where name = ? and parent = ?");
+			PreparedStatement pstmt = isFullPath
+					? con.prepareStatement("select name, data from Content join File using (contentID) where name = ? and parent = ?")
+					: con.prepareStatement("select name, data from Content join File using (contentID) where name = ?");
 			pstmt.setString(1, executableName);
-			pstmt.setString(2, resolvedPath.getFileID());
+			if (isFullPath) pstmt.setString(2, resolvedPath.getFileID());
 			ResultSet rs = pstmt.executeQuery();
 			if (rs.next()) {
 				Blob blob = rs.getBlob(2);
