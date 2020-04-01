@@ -17,3 +17,5 @@ insert into File (fileID, name, parent, fileType, readPermission, writePermissio
 insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('7', 'rel1', '5', 'symLink', 1, 1, 1, NULL, "./..");
 insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('8', 'rel2', '5', 'symLink', 1, 1, 1, NULL, "root");
 insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('9', 'abs', '5', 'symLink', 1, 1, 1, NULL, "/root/IntelliJ/src");
+insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('10', 'cy1', '2', 'symLink', 1, 1, 1, NULL, "cy2");
+insert into File (fileID, name, parent, fileType, readPermission, writePermission, execPermission, contentID, symLink) VALUES ('11', 'cy2', '2', 'symLink', 1, 1, 1, NULL, "cy1");

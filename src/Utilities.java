@@ -195,7 +195,7 @@ public class Utilities {
         return null;
 	}
 
-    private PathInfo resolvePath(String fullPath) throws SQLException {
+    private PathInfo resolvePath(String fullPath, ArrayList<String> seenSymLinks) throws SQLException {
 		String[] pathComponents = fullPath.split("/");
         int start = 0;
         PathInfo newPath = new PathInfo(pathInfo);
@@ -222,15 +222,21 @@ public class Utilities {
                 pstmt.setString(1, newPath.getFileID());
                 ResultSet rs = pstmt.executeQuery();
                 if (rs.next()) {
+                    String fileId = rs.getString(1);
                     PathInfo.FileType type = PathInfo.fileType(rs.getString(2));
 
                     if (type.equals(PathInfo.FileType.SymLink)) {
+                        if (seenSymLinks.contains(fileId)) {
+                            System.out.println("Circular symlink in path");
+                            return null;
+                        }
+                        seenSymLinks.add(fileId);
                         String symPath = rs.getString(3);
                         newPath.pop(); // Remove symlink name from the path
-                        newPath = new Utilities(con, newPath).resolvePath(symPath);
+                        newPath = new Utilities(con, newPath).resolvePath(symPath, seenSymLinks);
                         if (newPath == null) { return null; }
                     } else {
-                        newPath.setFileID(rs.getString(1));
+                        newPath.setFileID(fileId);
                         newPath.setFileType(type);
                     }
                 } else {
@@ -240,5 +246,9 @@ public class Utilities {
             }
         }
         return newPath;
+    }
+
+    private PathInfo resolvePath(String fullPath) throws SQLException {
+        return resolvePath(fullPath, new ArrayList());
     }
 }
