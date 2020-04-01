@@ -13,18 +13,25 @@ import java.util.Arrays;
 
 public class Utilities {
 	Connection con;
-	String currentFileID;
-	public Utilities(Connection con, String currentFileID) {
+	PathInfo pathInfo;
+	public Utilities(Connection con, PathInfo pathInfo) {
 		this.con = con;
-		this.currentFileID = currentFileID; 
+		this.pathInfo = pathInfo;
 	}
 
-	protected void ls(boolean longFlag) {
+	protected void ls(boolean longFlag, String path) {
 		try {
+            PathInfo lsPath = resolvePath(path);
+            if (lsPath == null) {
+                return;
+            }
+
 			Statement stmt = con.createStatement();
-			PreparedStatement pstmt = con.prepareStatement("select name,fileType,readPermission,writePermission,execPermission,created"
-							+ " from File where parent = (select fileID from File where fileID = ?)");
-			pstmt.setString(1, currentFileID);
+            String dirStmt = "select name,fileType,readPermission,writePermission,execPermission,created"
+                                            + " from File where parent = (select fileID from File where fileID = ?)";
+            String fileStmt = "select name,fileType,readPermission,writePermission,execPermission,created from File where fileID = ?";
+			PreparedStatement pstmt = con.prepareStatement(lsPath.getFileType() == PathInfo.FileType.Directory ? dirStmt : fileStmt);
+			pstmt.setString(1, lsPath.getFileID());
 			ResultSet rs = pstmt.executeQuery();
 			
 			while (rs.next()) {
@@ -63,13 +70,13 @@ public class Utilities {
 		}
 	}
 
-	protected PathInfo cd(String path, PathInfo origPath) {
+	protected PathInfo cd(String path) {
 		try {
-            PathInfo newPath = resolvePath(path, origPath);
-            if (newPath == null) { return origPath; }
+            PathInfo newPath = resolvePath(path);
+            if (newPath == null) { return pathInfo; }
             if (newPath.getFileType() != PathInfo.FileType.Directory) {
                 System.out.println("Not a directory");
-                return origPath;
+                return pathInfo;
             }
             return newPath;
 		} catch (SQLException e) {
@@ -78,13 +85,12 @@ public class Utilities {
         return null;
 	}
 
-    private PathInfo resolvePath(String fullPath, PathInfo origPath) throws SQLException {
+    private PathInfo resolvePath(String fullPath) throws SQLException {
 		String[] pathComponents = fullPath.split("/");
         int start = 0;
-        PathInfo newPath = new PathInfo(origPath);
+        PathInfo newPath = new PathInfo(pathInfo);
         if (pathComponents.length == 0 || pathComponents[0].equals("")) {
             // abs path
-            currentFileID = PathInfo.ROOTID;
             start = 1;
             newPath.clear();
         }
@@ -104,7 +110,7 @@ public class Utilities {
                     pstmt.setString(2, name);
                     newPath.push(name);
                 }
-                pstmt.setString(1, currentFileID);
+                pstmt.setString(1, newPath.getFileID());
                 ResultSet rs = pstmt.executeQuery();
                 if (rs.next()) {
                     PathInfo.FileType type = PathInfo.fileType(rs.getString(2));
@@ -112,11 +118,10 @@ public class Utilities {
                     if (type.equals(PathInfo.FileType.SymLink)) {
                         String symPath = rs.getString(3);
                         newPath.pop(); // Remove symlink name from the path
-                        newPath = resolvePath(symPath, newPath);
+                        newPath = new Utilities(con, newPath).resolvePath(symPath);
                         if (newPath == null) { return null; }
                     } else {
-                        currentFileID = rs.getString(1);
-                        newPath.setFileID(currentFileID);
+                        newPath.setFileID(rs.getString(1));
                         newPath.setFileType(type);
                     }
                 } else {

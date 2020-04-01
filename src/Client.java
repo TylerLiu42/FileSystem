@@ -30,31 +30,39 @@ public class Client {
 		
 		while (true) {
 			System.out.print(currentPath.pathStr() + " > Enter command: ");
-			String command = scanner.nextLine().trim();
-            if (command.equals("")) {
+			String[] command = scanner.nextLine().trim().split(" ");
+            if (command.length == 0 || command[0].equals("")) {
                 continue;
             }
-			else if (command.equals("ls")) {
-				Utilities util = new Utilities(con, currentPath.getFileID());
-				util.ls(false);
+			else if (command[0].equals("ls")) {
+				Utilities util = new Utilities(con, currentPath);
+
+                int argIdx = 1;
+                boolean longFlag = false;
+                if (command.length > 1) {
+                    if (command[1].equals("-l")) {
+                        argIdx++;
+                        longFlag = true;
+                    }
+                }
+
+                if (command.length > argIdx) {
+                    util.ls(longFlag, command[argIdx]);
+                } else {
+                    util.ls(longFlag, ".");
+                }
 			}
-			else if (command.equals("ls -l")) {
-				Utilities util = new Utilities(con, currentPath.getFileID());
-				util.ls(true);
-			}
-			else if (command.substring(0, 2).equals("sh")) {
-				String[] commandStr = command.split(" ");
-				String executableName = commandStr[1];
-				Utilities util = new Utilities(con, currentPath.getFileID());
+			else if (command[0].equals("sh")) {
+				String executableName = command[1];
+				Utilities util = new Utilities(con, currentPath);
 				util.sh(executableName);
 			}
-			else if (command.substring(0, 2).equals("cd")) {
-				String[] commandStr = command.split(" ");
-                if (commandStr.length < 2) { continue; }
+			else if (command[0].equals("cd")) {
+                if (command.length < 2) { continue; }
 
-				String fullPath = commandStr[1];
-				Utilities util = new Utilities(con, currentPath.getFileID());
-                PathInfo newPath = util.cd(fullPath, currentPath);
+				String fullPath = command[1];
+				Utilities util = new Utilities(con, currentPath);
+                PathInfo newPath = util.cd(fullPath);
                 currentPath = newPath;
 			}
             else {

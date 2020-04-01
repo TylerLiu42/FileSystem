@@ -51,8 +51,6 @@ public class PathInfo {
 
     public void pop() {
         if (path.size() > 0) {
-            tipFileID = ROOTID;
-            tipFileType = FileType.Directory;
             path.remove(path.size() - 1);
         }
     }
