@@ -12,8 +12,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Utilities {
+    interface FileOperation {
+        public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created); 
+    }
+    
 	Connection con;
 	PathInfo pathInfo;
+
 	public Utilities(Connection con, PathInfo pathInfo) {
 		this.con = con;
 		this.pathInfo = pathInfo;
@@ -69,6 +74,60 @@ public class Utilities {
 			e.printStackTrace();
 		}
 	}
+
+    protected void find(String path, String partialName) {
+        try {
+            PathInfo findDir = resolvePath(path);
+            if (findDir == null) { return; }
+            if (findDir.getFileType() != PathInfo.FileType.Directory) {
+                System.out.println("Can only call find on a directory");
+                return;
+            }
+
+            FileOperation findOp = new FileOperation() {
+                String partial = partialName;
+                public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created) {
+                    if (name.contains(partial)) {
+                        String[] args = {fileType.toString(), readPermission, writePermission, execPermission, created};
+                        System.out.println(dir.pathStr()+"/"+name+" "+String.join(" ", args));
+                    }
+                } 
+            };
+            dirWalk(findDir, findOp);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Won't walk thru symlinks
+    private void dirWalk(PathInfo dir, FileOperation op) throws SQLException {
+        Statement stmt = con.createStatement();
+        PreparedStatement pstmt = con.prepareStatement("select fileID, name, fileType, readPermission, writePermission, execPermission, created from File where parent = ?");
+        pstmt.setString(1, dir.getFileID());
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            String fileID = rs.getString(1);
+            String name = rs.getString(2);
+            PathInfo.FileType fileType = PathInfo.fileType(rs.getString(3));
+
+            if (fileType == PathInfo.FileType.Directory) {
+                if (!fileID.equals(PathInfo.ROOTID)) {
+                    PathInfo nextDir = new PathInfo(dir);
+                    nextDir.push(name);
+                    nextDir.setFileID(fileID);
+                    dirWalk(nextDir, op);
+                }
+            } else {
+                String readPermission = rs.getString(4);
+                String writePermission = rs.getString(5);
+                String execPermission = rs.getString(6);
+                String created = rs.getString(7);
+                op.call(dir, name, fileID, fileType, readPermission, writePermission, execPermission, created);
+            }
+    
+        }
+    }
 
 	protected PathInfo cd(String path) {
 		try {

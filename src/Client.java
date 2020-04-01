@@ -27,6 +27,7 @@ public class Client {
 		}
 		
 		Scanner scanner = new Scanner(System.in);
+        Utilities util = new Utilities(con, currentPath);
 		
 		while (true) {
 			System.out.print(currentPath.pathStr() + " > Enter command: ");
@@ -35,8 +36,6 @@ public class Client {
                 continue;
             }
 			else if (command[0].equals("ls")) {
-				Utilities util = new Utilities(con, currentPath);
-
                 int argIdx = 1;
                 boolean longFlag = false;
                 if (command.length > 1) {
@@ -54,17 +53,25 @@ public class Client {
 			}
 			else if (command[0].equals("sh")) {
 				String executableName = command[1];
-				Utilities util = new Utilities(con, currentPath);
 				util.sh(executableName);
 			}
 			else if (command[0].equals("cd")) {
                 if (command.length < 2) { continue; }
 
 				String fullPath = command[1];
-				Utilities util = new Utilities(con, currentPath);
                 PathInfo newPath = util.cd(fullPath);
                 currentPath = newPath;
 			}
+            else if (command[0].equals("find")) {
+                if (command.length != 3) { 
+                    System.out.println("find takes 2 arguments: directory and partial name");
+                    continue;
+                }
+
+                String dir = command[1];
+                String partialName = command[2];
+                util.find(dir, partialName);
+            }
             else {
                 System.out.println("Unrecognized command");
             }
