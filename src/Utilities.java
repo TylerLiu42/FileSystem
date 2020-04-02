@@ -108,55 +108,41 @@ public class Utilities {
         }
     }
 
-    protected void grep(String path, String searchStr) {
-        try {
-            PathInfo target = resolvePath(path);
-            if (target == null) { return; }
+    protected void grep(String pattern, String searchStr) {
+        FileOperation grepOp = new FileOperation() {
+            String search = searchStr;
+            String partialName = pattern;
+            Connection conn = con;
 
-            FileOperation grepOp = new FileOperation() {
-                String search = searchStr;
-                Connection conn = con;
-
-                public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created, String symLink, String contentID) {
-                    try {
-                        String content;
-                        if (fileType == PathInfo.FileType.SymLink) {
-                            content = symLink;
-                        } else {
-                            PreparedStatement pstmt = conn.prepareStatement("select data from Content where contentID = ?");
-                            pstmt.setString(1, contentID);
-                            ResultSet rs = pstmt.executeQuery();
-                            rs.next();
-                            content = rs.getString(1);
-                        }
-
-                        String[] lines = content.split("\n");
-                        for (int i = 0; i < lines.length; i++) {
-                            String line = lines[i];
-                            if (line.contains(search)) {
-                                System.out.println(dir.pathStr()+"/"+name+":"+i+": "+line);
-                            }
-                        }
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+            public void call(PathInfo dir, String name, String fileID, PathInfo.FileType fileType, String readPermission, String writePermission, String execPermission, String created, String symLink, String contentID) {
+                if (partialName != null && !name.contains(partialName)) { return; }
+                try {
+                    String content;
+                    if (fileType == PathInfo.FileType.SymLink) {
+                        content = symLink;
+                    } else {
+                        PreparedStatement pstmt = conn.prepareStatement("select data from Content where contentID = ?");
+                        pstmt.setString(1, contentID);
+                        ResultSet rs = pstmt.executeQuery();
+                        rs.next();
+                        content = rs.getString(1);
                     }
-                } 
-            };
 
-            if (target.getFileType() == PathInfo.FileType.Directory) {
-                dirWalk(target, grepOp);
-            } else {
-                PreparedStatement pstmt = con.prepareStatement("select name, symLink, contentID from File where fileID = ?");
-                pstmt.setString(1, target.getFileID());
-                ResultSet rs = pstmt.executeQuery();
-                rs.next();
-                String name = rs.getString(1);
-                String symLink = rs.getString(2);
-                String contentID = rs.getString(3);
-                PathInfo targetCopy = new PathInfo(target);
-                targetCopy.pop();
-                grepOp.call(targetCopy, name, target.getFileID(), target.getFileType(), null, null, null, null, symLink, contentID);
-            }
+                    String[] lines = content.split("\n");
+                    for (int i = 0; i < lines.length; i++) {
+                        String line = lines[i];
+                        if (line.contains(search)) {
+                            System.out.println(dir.pathStr()+"/"+name+":"+i+": "+line);
+                        }
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            } 
+        };
+
+        try {
+            dirWalk(this.pathInfo, grepOp);
         } catch (SQLException e) {
             e.printStackTrace();
         }

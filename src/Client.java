@@ -75,13 +75,13 @@ public class Client {
             else if (command[0].equals("grep")) {
                 if (command.length == 2) {
                     String search = command[1];
-                    util.grep(".", search);
+                    util.grep(null, search);
                 } else if (command.length == 3) {
-                    String dir = command[1];
+                    String pattern = command[1];
                     String search = command[2];
-                    util.grep(dir, search);
+                    util.grep(pattern, search);
                 } else {
-                    System.out.println("Usage: grep [dir] searchStr");
+                    System.out.println("Usage: grep [pattern] searchStr");
                 }
             }
             else {
