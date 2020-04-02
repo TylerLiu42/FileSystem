@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,7 +74,9 @@ public class Utilities {
 				out.write(buff);
 				out.close();
 				in.close();
-                Process p = new ProcessBuilder(resolvedFileName).start();
+                ProcessBuilder pBuilder = new ProcessBuilder(resolvedFileName);
+                pBuilder.directory(new File(System.getProperty("java.io.tmpdir")));
+                Process p = pBuilder.start();
                 p.waitFor();
 			} else {
 			    System.out.println("Not a regular file or hardlink");
